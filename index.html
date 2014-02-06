@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+  <head>
+  <title>WebGL Point Playground</title>
+    <style type="text/css">
+      #canvas {
+        border: 1px solid #000;
+        float: left;
+        -webkit-border-radius: 3px;
+        -moz-border-radius: 3px;
+        border-radius: 3px;
+      }
+      #shaders {
+        position: absolute;
+        left: 525px;
+        margin-left: 10px;
+      }
+      textarea {
+        height: 208px;
+        width: 456px;
+        margin: 0;
+        background-color: #FFFFD8;
+        font-family: Menlo, monospace;
+        font-size: 12px;
+        margin-left: 23px;
+        -webkit-border-radius: 3px;
+        -moz-border-radius: 3px;
+        border-radius: 3px;
+      }
+      h3 {
+        margin: 0;
+        padding: 0px 0px 7px 0px;
+      }
+      select {
+        float:left;
+      }
+
+      #run {
+        background-color: #E0EBF5;
+        border-color: rgb(55, 94, 171);
+        border-width: 1px;
+        font-size: large;
+        padding: 4px;
+        cursor: pointer;
+        -webkit-border-radius: 3px;
+        -moz-border-radius: 3px;
+        border-radius: 3px;
+        float: right;
+      }
+    </style>
+    <script type="text/javascript">
+      var vertexShader = "attribute vec4 worldCoord;\n\nvoid main() {\n  gl_Position = worldCoord;\n  gl_PointSize = 256.;\n}\n";
+
+      var square = "precision mediump float;\n\nvoid main() {\n  gl_FragColor = vec4(.0, .0, .0, 1.);\n}";
+      
+      var circle = "precision mediump float;\nfloat dist = length(gl_PointCoord.xy - vec2(.5,.5));\nfloat alpha = (dist > .5) ? .0 : 1.;\n\nvoid main() {\n  gl_FragColor = vec4(.0, .0, .0, 1.) * alpha;\n}\n";
+
+      var fade = "precision mediump float;\n\nvoid main() {\n  float dist = length(gl_PointCoord.xy - vec2(.5,.5));\n  dist = 1. - (dist * 2.);\n  dist = max(0., dist);\n  gl_FragColor = vec4(.0, .0, .0, 1.) * dist;\n}\n";
+
+      function setShader(fragmentSrc) {
+        document.getElementById('point-fragment-shader').value = fragmentSrc;
+      }
+
+      var gl;
+      function createShaderProgram() {
+        // create vertex shader
+        var vertexSrc = document.getElementById('point-vertex-shader').value;
+        var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexSrc);
+        gl.compileShader(vertexShader);
+
+        // create fragment shader
+        var fragmentSrc = document.getElementById('point-fragment-shader').value;
+        var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentSrc);
+        gl.compileShader(fragmentShader);
+
+        // link shaders to create our program
+        pointProgram = gl.createProgram();
+        gl.attachShader(pointProgram, vertexShader);
+        gl.attachShader(pointProgram, fragmentShader);
+        gl.linkProgram(pointProgram);
+
+        gl.useProgram(pointProgram);
+      }
+
+      function main() {
+        var el = document.getElementById('example-fragment-shader-select');
+        el.addEventListener("change", function(e) {
+          setShader(eval(e.target.value));
+        }, false);
+
+        var el = document.getElementById('point-fragment-shader');
+        if (el.value == "") {
+          el.value = square;
+        }
+
+        var el = document.getElementById('point-vertex-shader');
+        if (el.value == "") {
+          el.value = vertexShader;
+        }
+        var canvas = document.getElementById("canvas");
+        gl = canvas.getContext('experimental-webgl');
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        createShaderProgram();
+        pointArrayBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0.0,0.0]), gl.STATIC_DRAW); 
+        var attributeLoc = gl.getAttribLocation(pointProgram, 'worldCoord');
+        gl.enableVertexAttribArray(attributeLoc);
+        gl.vertexAttribPointer(attributeLoc, 2, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.POINTS,0,1);
+      }
+
+      document.addEventListener('DOMContentLoaded', main, false);
+
+    </script>   
+  </head>
+  <body>
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <div id="shaders">
+      <h3>Vertex Shader</h3>
+      <textarea id="point-vertex-shader" name="point-vertex-shader"></textarea>
+      <h3>Fragment Shader</h3>
+      <textarea name="point-fragment-shader" id="point-fragment-shader"></textarea>
+      <br/>
+      <select name="example-fragment-shader" id="example-fragment-shader-select">
+        <option>square</option>
+        <option>circle</option>
+        <option>fade</option>
+      </select>
+      <input type="button" name="run" value="Run" onclick="main()" id="run"></input>
+    </div>
+  </body>
+</html>
